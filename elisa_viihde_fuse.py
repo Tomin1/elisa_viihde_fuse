@@ -134,15 +134,19 @@ class ElisaviihdeFUSE(LoggingMixIn, Operations):
         else:
             return self.FOLDER
 
-    def _stat_program(self, path, dir_id=None): # FIXME: Missing stuff!
+    def _stat_program(self, path, dir_id=None):
         info = self._get_program_info(path, dir_id)
         time = info['startTimeUTC'] / 1000
+        uri = self.elisaviihde.getstreamuri(info['programId'])
+        request = Request(uri, method='HEAD')
+        with urlopen(request) as response:
+            size = int(response.getheader('Content-Length', 4096))
         return {
             'st_mode' : 0o444 | stat.S_IFREG,
             'st_nlink' : 1,
             'st_uid' : os.getuid(),
             'st_gid' : os.getgid(),
-            'st_size' : 4096,
+            'st_size' : size,
             'st_atime' : time,
             'st_mtime' : time,
             'st_ctime' : time,
@@ -199,12 +203,12 @@ class ElisaviihdeFUSE(LoggingMixIn, Operations):
 
     def read(self, path, size, offset, fh):
         try:
-            uri = elisaviihde.getlegacyuri(fh)
+            uri = self.elisaviihde.getstreamuri(fh)
         except Exception:
             raise FuseOSError(errno.EACCES)
         request = Request(uri, headers={
-                'Range': '{}-{}'.format(offset, offset+size)
-            })
+            'Range': 'bytes={}-{}'.format(offset, offset+size)
+        })
         with urlopen(request) as response:
             if response.getcode() / 100 == 4 or response.getcode() / 100 == 5:
                 raise FuseOSError(errno.EIO)
@@ -229,6 +233,7 @@ class ElisaviihdeFUSE(LoggingMixIn, Operations):
     def destroy(self, path):
         self.elisaviihde.close()
         self.elisaviihde = None
+        return 0
 
 if __name__ == "__main__":
     import sys, argparse
@@ -259,11 +264,7 @@ if __name__ == "__main__":
         sys.exit(32) # see mount(8)
     if args.no_fork:
         print("Not forking, press Ctrl+c to quit!")
-        try:
-            fuse = FUSE(ev, args.mountpoint, foreground=True)
-        except KeyboardInterrupt:
-            ev.destroy()
-            sys.exit(0)
+        fuse = FUSE(ev, args.mountpoint, foreground=True)
     else:
         fuse = FUSE(ev, args.mountpoint)
     sys.exit(0)

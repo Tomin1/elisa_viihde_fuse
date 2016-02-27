@@ -31,7 +31,12 @@ Problems
 Elisa Viihde API is not very friendly for this kind of operation. Maybe the
 greatest problem of all is that it doesn't expose file sizes but only recording
 lengths. That can't be used for file size (it might be possible to use that for
-estimating file size).
+estimating file size). Instead I must make a HEAD request for every getattr
+request for files.
+
+Currently downloading files (only older recordings work) takes a lot of
+requests and it is very slow. Even listing files is quite slow and takes many
+seconds even for a small-ish directory.
 
 Another problem is that some things require a lot of requests especially
 if caching is not implemented.
