@@ -48,7 +48,7 @@ to handle that at the moment.
 Disclaimer
 ----------
 This program or it's developer(s) are not affiliated with Elisa or Elisa Viihde
-in any way. You should not contact Elisa for problems in this application.
+in any way. You should not contact Elisa about problems in this application.
 
 Elisa Viihde is a trademark of Elisa Oyj.
 
