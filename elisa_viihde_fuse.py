@@ -22,6 +22,7 @@
 # SOFTWARE.
 
 from collections import deque, namedtuple
+from datetime import datetime, timedelta
 from elisaviihde import elisaviihde
 from fuse import FUSE, FuseOSError, Operations, LoggingMixIn
 from time import strptime, strftime
@@ -46,19 +47,24 @@ FILENAME_ISO_RE = re.compile(FILENAME_ISO)
 TIME_FORMAT = '%d.%m.%Y %H.%M'
 TIME_ISO_FORMAT = '%Y-%m-%d %H:%M'
 
+CACHE_INVALIDATE_TIME = timedelta(0, 3600)
+
 class EError(Exception):
     pass
 
 DirCache = namedtuple('DirCache', ['folders', 'recordings'])
+StreamUriCache = namedtuple('StreamUriCache', ['uri', 'time'])
 
 class ElisaviihdeFUSE(LoggingMixIn, Operations):
     FOLDER = 0
     PROGRAM = 1
 
+
     def __init__(self, username, password, formatted_time=False):
         self.elisaviihde = elisaviihde()
         self.formatted_time = formatted_time
         self._dir_cache = {}
+        self._stream_uri_cache = {}
         try:
             self.elisaviihde.login(username, password)
         except Exception:
@@ -203,10 +209,16 @@ class ElisaviihdeFUSE(LoggingMixIn, Operations):
         return self._get_folder_id(path)
 
     def read(self, path, size, offset, fh):
-        try:
-            uri = self.elisaviihde.getstreamuri(fh)
-        except Exception:
-            raise FuseOSError(errno.EACCES)
+        if (fh in self._stream_uri_cache and
+                datetime.now() - self._stream_uri_cache[fh].time <
+                CACHE_INVALIDATE_TIME):
+            uri = self._stream_uri_cache[fh].uri
+            self._stream_uri_cache[fh] = StreamUriCache(uri, datetime.now())
+        else:
+            try:
+                uri = self.elisaviihde.getstreamuri(fh)
+            except Exception:
+                raise FuseOSError(errno.EACCES)
         request = Request(uri, headers={
             'Range': 'bytes={}-{}'.format(offset, offset+size)
         })
