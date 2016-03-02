@@ -147,6 +147,7 @@ class ElisaviihdeFUSE(LoggingMixIn, Operations):
             'st_uid' : os.getuid(),
             'st_gid' : os.getgid(),
             'st_size' : size,
+            'st_blksize' : 128*1024,
             'st_atime' : time,
             'st_mtime' : time,
             'st_ctime' : time,
@@ -234,6 +235,24 @@ class ElisaviihdeFUSE(LoggingMixIn, Operations):
         self.elisaviihde.close()
         self.elisaviihde = None
         return 0
+
+    def __call__(self, op, path, *args):
+        if op == 'read':
+            self.log.debug('-> %s %s %s', op, path, repr(args))
+            ret_val = '[Unhandled Exception]'
+            try:
+                ret_val = getattr(self, op)(path, *args)
+            except OSError as e:
+                ret_val = str(e)
+                raise
+            finally:
+                if type(ret_val) == bytes:
+                    self.log.debug('<- %s len(bytes) %s', op, len(ret_val))
+                else:
+                    self.log.debug('<- %s %s', op, repr(ret_val))
+            return ret_val
+        else:
+            return super().__call__(op, path, *args)
 
 if __name__ == "__main__":
     import sys, argparse
