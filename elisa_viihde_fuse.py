@@ -249,20 +249,18 @@ class ElisaviihdeFUSE(LoggingMixIn, Operations):
         return 0
 
     def __call__(self, op, path, *args):
-        if op == 'read':
+        if op in ('read', 'readdir'):
             self.log.debug('-> %s %s %s', op, path, repr(args))
-            ret_val = '[Unhandled Exception]'
             try:
-                ret_val = getattr(self, op)(path, *args)
+                data = getattr(self, op)(path, *args)
+                self.log.debug('<- %s len %s', op, len(data))
+                return data
             except OSError as e:
-                ret_val = str(e)
+                self.log.debug('<- %s %s', op, repr(str(e)))
                 raise
-            finally:
-                if type(ret_val) == bytes:
-                    self.log.debug('<- %s len(bytes) %s', op, len(ret_val))
-                else:
-                    self.log.debug('<- %s %s', op, repr(ret_val))
-            return ret_val
+            except Exception:
+                self.log.debug('<- %s [Unhandled Exception]', op)
+                raise
         else:
             return super().__call__(op, path, *args)
 
