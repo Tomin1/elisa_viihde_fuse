@@ -71,44 +71,27 @@ class ElisaviihdeFUSE(LoggingMixIn, Operations):
             raise EError("Invalid credientials")
 
     def _get_folder_id(self, path, dir_id=None):
-        if path.startswith("/"):
-            dirs = deque(path[1:].split("/"))
+        if path in ('/', ''):
+            return 0
+        path, name = path.rsplit('/', 1)
+        if dir_id is None:
+            dir_id = self._get_folder_id(path)
+        try:
+            listing = self.elisaviihde.getfolders(dir_id)
+        except Exception:
+            raise FuseOSError(errno.EIO)
+        for folder in listing:
+            if folder['name'] == name:
+                return folder['id']
         else:
-            dirs = deque(path.split("/"))
-        if dir_id is not None:
-            current = dir_id
-        else:
-            current = 0
-        while len(dirs) > 0:
-            if dirs[0] == '':
-                break
-            try:
-                listing = self.elisaviihde.getfolders(current)
-            except Exception:
-                raise FuseOSError(errno.EIO)
-            for folder in listing:
-                if folder['name'] == dirs[0]:
-                    current = folder['id']
-                    dirs.popleft()
-                    break
-            else:
-                raise FuseOSError(errno.ENOENT)
-        return current
-
-    def _get_parent_id_and_filename(self, path):
-        dirs = path.split("/")[1:]
-        name = dirs.pop()
-        dir_id = self._get_folder_id("/".join(dirs))
-        return dir_id, name
-
-    def _get_parent_id(self, path):
-        return self._get_parent_id_and_filename(path)[0]
+            raise FuseOSError(errno.ENOENT)
 
     def _get_program_info(self, path, dir_id=None):
         if dir_id is None:
-            dir_id, name = self._get_parent_id_and_filename(path)
+            parent_path, name = path.rsplit('/', 1)
+            dir_id = self._get_folder_id(parent_path)
         else:
-            name = path.split("/")[-1]
+            name = path.rsplit("/", 1)[1]
         name = self._parse_filename(name)
         if name is None:
             raise FuseOSError(errno.ENOENT)
