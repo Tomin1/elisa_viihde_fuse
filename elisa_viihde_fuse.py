@@ -59,7 +59,6 @@ class ElisaviihdeFUSE(LoggingMixIn, Operations):
     FOLDER = 0
     PROGRAM = 1
 
-
     def __init__(self, username, password, formatted_time=False):
         self.elisaviihde = elisaviihde()
         self.formatted_time = formatted_time
@@ -142,7 +141,7 @@ class ElisaviihdeFUSE(LoggingMixIn, Operations):
             'st_ctime' : time,
         }
 
-    def _stat_folder(self, path, dir_id=None): # FIXME: Missing stuff!
+    def _stat_folder(self, path, dir_id=None):
         if dir_id is None:
             dir_id = self._get_folder_id(path)
         return {
@@ -150,7 +149,7 @@ class ElisaviihdeFUSE(LoggingMixIn, Operations):
             'st_nlink' : 1,
             'st_uid' : os.getuid(),
             'st_gid' : os.getgid(),
-            'st_size' : 4096,
+            'st_size' : 0,
             'st_atime' : 0,
             'st_mtime' : 0,
             'st_ctime' : 0,
