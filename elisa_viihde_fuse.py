@@ -26,11 +26,9 @@ from datetime import datetime, timedelta
 from elisaviihde import elisaviihde
 from fuse import FUSE, FuseOSError, Operations, LoggingMixIn
 from time import strptime, strftime
-from urllib.request import urlopen, Request
-import errno, logging, os, re, stat
+import errno, logging, os, re, requests, stat
 
 # Tell requests to shut up
-import requests
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
@@ -126,9 +124,8 @@ class ElisaviihdeFUSE(LoggingMixIn, Operations):
         info = self._get_program_info(path, dir_id)
         time = info['startTimeUTC'] / 1000
         uri = self.elisaviihde.getstreamuri(info['programId'])
-        request = Request(uri, method='HEAD')
-        with urlopen(request) as response:
-            size = int(response.getheader('Content-Length', 4096))
+        response = requests.head(uri, allow_redirects=True)
+        size = int(response.headers.get('Content-Length', 4096))
         return {
             'st_mode' : 0o444 | stat.S_IFREG,
             'st_nlink' : 1,
@@ -201,13 +198,14 @@ class ElisaviihdeFUSE(LoggingMixIn, Operations):
                 uri = self.elisaviihde.getstreamuri(fh)
             except Exception:
                 raise FuseOSError(errno.EACCES)
-        request = Request(uri, headers={
+        response = requests.get(uri, stream=True, headers={
             'Range': 'bytes={}-{}'.format(offset, offset+size)
         })
-        with urlopen(request) as response:
-            if response.getcode() / 100 == 4 or response.getcode() / 100 == 5:
-                raise FuseOSError(errno.EIO)
-            return response.read(size)
+        try:
+            response.raise_for_status()
+        except requests.exceptions.HTTPError:
+            raise FuseOSError(errno.EIO)
+        return response.raw.read(size)
 
     def readdir(self, path, fh): # FIXME: Add attrs and stuff!
         if fh not in self._dir_cache:
