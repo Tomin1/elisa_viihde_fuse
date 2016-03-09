@@ -21,7 +21,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from collections import deque, namedtuple
+from collections import namedtuple
 from datetime import datetime, timedelta
 from elisaviihde import elisaviihde
 from fuse import FUSE, FuseOSError, Operations, LoggingMixIn
