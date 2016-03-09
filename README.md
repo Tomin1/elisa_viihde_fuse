@@ -19,7 +19,7 @@ Goals
 Main goals:
 - Allow listing recordings (works!)
 - Allow opening and reading the files to watch videos and copy them to local
-  drives (some of them works, but is slow and makes a lot of requests!)
+  drives (some files work, but downloading is slow and makes a lot of requests!)
 - Resrict other users from touching the files if wanted (mount time option)
 
 Other niche features:
