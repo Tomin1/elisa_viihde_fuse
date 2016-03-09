@@ -47,9 +47,6 @@ TIME_ISO_FORMAT = '%Y-%m-%d %H:%M'
 
 CACHE_INVALIDATE_TIME = timedelta(0, 3600)
 
-class EError(Exception):
-    pass
-
 DirCache = namedtuple('DirCache', ['folders', 'recordings'])
 StreamUriCache = namedtuple('StreamUriCache', ['uri', 'time'])
 
@@ -64,8 +61,8 @@ class ElisaviihdeFUSE(LoggingMixIn, Operations):
         self._stream_uri_cache = {}
         try:
             self.elisaviihde.login(username, password)
-        except Exception:
-            raise EError("Invalid credientials")
+        except Exception as error:
+            raise ValueError("Invalid credientials") from error
 
     def _get_folder_id(self, path, dir_id=None):
         if path in ('/', ''):
@@ -75,8 +72,8 @@ class ElisaviihdeFUSE(LoggingMixIn, Operations):
             dir_id = self._get_folder_id(path)
         try:
             listing = self.elisaviihde.getfolders(dir_id)
-        except Exception:
-            raise FuseOSError(errno.EIO)
+        except Exception as error:
+            raise FuseOSError(errno.EIO) from error
         for folder in listing:
             if folder['name'] == name:
                 return folder['id']
@@ -95,8 +92,8 @@ class ElisaviihdeFUSE(LoggingMixIn, Operations):
         if dir_id not in self._dir_cache:
             try:
                 listing = self.elisaviihde.getrecordings(dir_id)
-            except Exception:
-                raise FuseOSError(errno.EIO)
+            except Exception as error:
+                raise FuseOSError(errno.EIO) from error
         else:
             listing = self._dir_cache[dir_id].recordings
         for recording in listing:
@@ -182,8 +179,8 @@ class ElisaviihdeFUSE(LoggingMixIn, Operations):
         try:
             folders = self.elisaviihde.getfolders(dir_id)
             recordings = self.elisaviihde.getrecordings(dir_id)
-        except Exception:
-            raise FuseOSError(errno.EIO)
+        except Exception as error:
+            raise FuseOSError(errno.EIO) from error
         self._dir_cache[dir_id] = DirCache(folders, recordings)
         return self._get_folder_id(path)
 
@@ -196,8 +193,8 @@ class ElisaviihdeFUSE(LoggingMixIn, Operations):
         else:
             try:
                 uri = self.elisaviihde.getstreamuri(fh)
-            except Exception:
-                raise FuseOSError(errno.EACCES)
+            except Exception as error:
+                raise FuseOSError(errno.EACCES) from error
         response = requests.get(uri, stream=True, headers={
             'Range': 'bytes={}-{}'.format(offset, offset+size)
         })
@@ -268,8 +265,8 @@ if __name__ == "__main__":
         logger.debug("Set logging to DEBUG level")
     try:
         ev = ElisaviihdeFUSE(args.username, args.password, args.format_time)
-    except EError as err:
-        print(err, file=sys.stderr)
+    except ValueError as error:
+        print(error, file=sys.stderr)
         sys.exit(32) # see mount(8)
     if args.no_fork:
         print("Not forking, press Ctrl+c to quit!")
